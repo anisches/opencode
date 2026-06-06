@@ -111,6 +111,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
     const project = useProject()
     const sdk = useSDK()
     const kv = useKV()
+    const [autoaccept] = kv.signal<"none" | "edit">("permission_auto_accept", "edit")
 
     const fullSyncedSessions = new Set<string>()
     const syncingSessions = new Map<string, Promise<void>>()
@@ -160,6 +161,15 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
         case "permission.asked": {
           const request = event.properties
+          if (autoaccept() === "edit" && request.permission === "edit") {
+            sdk.client.permission
+              .reply({
+                requestID: request.id,
+                reply: "once",
+              })
+              .catch(() => {})
+            break
+          }
           const requests = store.permission[request.sessionID]
           if (!requests) {
             setStore("permission", request.sessionID, [request])
